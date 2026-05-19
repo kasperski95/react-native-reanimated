@@ -135,10 +135,12 @@ void LayoutAnimationsProxy_Experimental::handleProgressTransition(
         if (result) {
           auto resultObj = result->asObject(uiRuntime_);
           auto frame = Frame(uiRuntime_, resultObj);
-          auto rawProps = RawProps(uiRuntime_, jsi::Value(uiRuntime_, resultObj));
 #ifdef RN_SERIALIZABLE_STATE
-          rawProps =
-              RawProps(folly::dynamic::merge(layoutAnimation.finalView.props->rawProps, (folly::dynamic)rawProps));
+          auto rawProps = RawProps(folly::dynamic::merge(
+              layoutAnimation.finalView.props->rawProps,
+              (folly::dynamic)RawProps(uiRuntime_, jsi::Value(uiRuntime_, resultObj))));
+#else
+          auto rawProps = RawProps(uiRuntime_, jsi::Value(uiRuntime_, resultObj));
 #endif
           auto newProps = getComponentDescriptorForShadowView(layoutAnimation.finalView)
                               .cloneProps(propsParserContext, layoutAnimation.finalView.props, std::move(rawProps));

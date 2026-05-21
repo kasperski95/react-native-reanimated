@@ -5,6 +5,7 @@ import * as React from 'react';
 import { Button, StyleSheet, View } from 'react-native';
 import Animated, {
   SharedTransition,
+  SharedTransitionType,
   withSpring,
 } from 'react-native-reanimated';
 
@@ -12,47 +13,52 @@ import { withSharedTransitionBoundary } from './withSharedTransitionBoundary';
 
 const Stack = createNativeStackNavigator();
 
-const transition = undefined;
-
-// SharedTransition.duration(1000)
-//   .custom((values) => {
-//     'worklet';
-//     return {
-//       width: withSpring(values.targetWidth),
-//       height: withSpring(values.targetHeight),
-//       originX: withSpring(values.targetOriginX),
-//       originY: withSpring(values.targetOriginY),
-//     };
-//   })
-//   .progressAnimation((values, progress) => {
-//     'worklet';
-//     const getValue = (
-//       progress: number,
-//       target: number,
-//       current: number
-//     ): number => {
-//       return progress * (target - current) + current;
-//     };
-//     return {
-//       width: getValue(progress, values.targetWidth, values.currentWidth),
-//       height: getValue(progress, values.targetHeight, values.currentHeight),
-//       originX: getValue(progress, values.targetOriginX, values.currentOriginX),
-//       originY: getValue(progress, values.targetOriginY, values.currentOriginY),
-//     };
-//   })
-//   .defaultTransitionType(SharedTransitionType.ANIMATION);
+const TRANSITION = SharedTransition.custom((values) => {
+  'worklet';
+  return {
+    width: withSpring(values.targetWidth),
+    height: withSpring(values.targetHeight),
+    originX: withSpring(values.targetOriginX),
+    originY: withSpring(values.targetOriginY),
+  };
+})
+  .progressAnimation((values, progress) => {
+    'worklet';
+    const interpolate = (
+      progress: number,
+      current: number,
+      target: number,
+    ): number => {
+      return progress * (target - current) + current;
+    };
+    return {
+      width: interpolate(progress, values.currentWidth, values.targetWidth),
+      height: interpolate(progress, values.currentHeight, values.targetHeight),
+      originX: interpolate(
+        progress,
+        values.currentOriginX,
+        values.targetOriginX,
+      ),
+      originY: interpolate(
+        progress,
+        values.currentOriginY,
+        values.targetOriginY,
+      ),
+    };
+  })
+  .defaultTransitionType(SharedTransitionType.ANIMATION);
 
 function Screen1Content({ navigation }: NativeStackScreenProps<ParamListBase>) {
   return (
     <Animated.ScrollView style={styles.flexOne}>
       <Animated.View
         style={styles.greenBoxScreenOne}
-        sharedTransitionTag="tag"
-        sharedTransitionStyle={transition}
+        sharedTransitionTag='tag'
+        sharedTransitionStyle={TRANSITION}
       />
       <Button
         onPress={() => navigation.navigate('Screen2')}
-        title="go to screen2"
+        title='go to screen2'
       />
     </Animated.ScrollView>
   );
@@ -63,10 +69,10 @@ function Screen2Content({ navigation }: NativeStackScreenProps<ParamListBase>) {
     <View style={styles.flexOne}>
       <Animated.View
         style={styles.greenBoxScreenTwo}
-        sharedTransitionTag="tag"
-        sharedTransitionStyle={transition}
+        sharedTransitionTag='tag'
+        sharedTransitionStyle={TRANSITION}
       />
-      <Button title="go back" onPress={() => navigation.popTo('Screen1')} />
+      <Button title='go back' onPress={() => navigation.popTo('Screen1')} />
     </View>
   );
 }
@@ -78,12 +84,12 @@ export default function CustomTransitionExample() {
   return (
     <Stack.Navigator>
       <Stack.Screen
-        name="Screen1"
+        name='Screen1'
         component={Screen1}
         options={{ headerShown: false }}
       />
       <Stack.Screen
-        name="Screen2"
+        name='Screen2'
         component={Screen2}
         options={{ headerShown: false }}
       />

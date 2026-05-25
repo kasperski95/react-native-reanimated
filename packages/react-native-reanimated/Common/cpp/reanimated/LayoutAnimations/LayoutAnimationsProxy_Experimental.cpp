@@ -1,6 +1,6 @@
 #include <react/renderer/mounting/ShadowViewMutation.h>
 #include <reanimated/LayoutAnimations/LayoutAnimationsProxy_Experimental.h>
-#include <reanimated/LayoutAnimations/PropsDiffer.h>
+#include <reanimated/LayoutAnimations/SharedTransitionValuesFactory.h>
 #include <reanimated/Tools/ReanimatedSystraceSection.h>
 
 #include <algorithm>
@@ -835,15 +835,15 @@ void LayoutAnimationsProxy_Experimental::startSharedTransition(
     }
 
     auto &uiRuntime = strongThis->uiRuntime_;
-    auto propsDiffer = PropsDiffer(uiRuntime, oldView, after);
+    auto valuesFactory = SharedTransitionValuesFactory(uiRuntime);
 
-    const auto &propsDiff = propsDiffer.computeDiff(uiRuntime);
+    const auto &values = valuesFactory.create(oldView, after);
 
-    propsDiff.setProperty(uiRuntime, "windowWidth", window.width);
-    propsDiff.setProperty(uiRuntime, "windowHeight", window.height);
+    values.setProperty(uiRuntime, "windowWidth", window.width);
+    values.setProperty(uiRuntime, "windowHeight", window.height);
 
     strongThis->layoutAnimationsManager_->startLayoutAnimation(
-        uiRuntime, tag, LayoutAnimationType::SHARED_ELEMENT_TRANSITION, propsDiff);
+        uiRuntime, tag, LayoutAnimationType::SHARED_ELEMENT_TRANSITION, values);
   });
 }
 
@@ -852,7 +852,7 @@ void LayoutAnimationsProxy_Experimental::startProgressTransition(
     const ShadowView &before,
     const ShadowView &after,
     SurfaceId surfaceId) const {
-  scheduleOnUI(uiScheduler_, [weakThis = weak_from_this(), before, after, surfaceId]() {
+  scheduleOnUI(uiScheduler_, [weakThis = weak_from_this(), before, after, surfaceId, tag]() {
     auto strongThis = weakThis.lock();
     if (!strongThis) {
       return;
@@ -866,6 +866,14 @@ void LayoutAnimationsProxy_Experimental::startProgressTransition(
       oldView = strongThis->maybeCreateLayoutAnimation(oldView, after, surfaceId);
       window = strongThis->surfaceManager.getWindow(surfaceId);
     }
+
+    auto &uiRuntime = strongThis->uiRuntime_;
+    auto valuesFactory = SharedTransitionValuesFactory(uiRuntime);
+    auto values = valuesFactory.create(oldView, after);
+    values.setProperty(uiRuntime, "windowWidth", window.width);
+    values.setProperty(uiRuntime, "windowHeight", window.height);
+
+    strongThis->layoutAnimations_[tag].propsDiff = std::make_shared<jsi::Value>(uiRuntime, std::move(values));
   });
 }
 

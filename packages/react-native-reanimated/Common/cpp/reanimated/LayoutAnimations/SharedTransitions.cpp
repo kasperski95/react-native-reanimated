@@ -128,6 +128,28 @@ void LayoutAnimationsProxy_Experimental::handleProgressTransition(
     for (auto tag : activeTransitions_) {
       auto layoutAnimation = layoutAnimations_[tag];
       auto &updateMap = surfaceManager.getUpdateMap(layoutAnimation.finalView.surfaceId);
+
+      if (layoutAnimation.propsDiff) {
+        auto result = layoutAnimationsManager_->callProgressWorklet(
+            uiRuntime_, tag, *layoutAnimation.propsDiff, transitionProgress_);
+        if (result) {
+          auto resultObj = result->asObject(uiRuntime_);
+          auto frame = Frame(uiRuntime_, resultObj);
+#ifdef RN_SERIALIZABLE_STATE
+          auto rawProps = RawProps(folly::dynamic::merge(
+              layoutAnimation.finalView.props->rawProps,
+              (folly::dynamic)RawProps(uiRuntime_, jsi::Value(uiRuntime_, resultObj))));
+#else
+          auto rawProps = RawProps(uiRuntime_, jsi::Value(uiRuntime_, resultObj));
+#endif
+          auto newProps = getComponentDescriptorForShadowView(layoutAnimation.finalView)
+                              .cloneProps(propsParserContext, layoutAnimation.finalView.props, std::move(rawProps));
+          updateMap.insert_or_assign(tag, UpdateValues{newProps, frame});
+          continue;
+        }
+      }
+
+      // Default linear interpolation
       auto before = layoutAnimation.startView.layoutMetrics.frame;
       auto after = layoutAnimation.finalView.layoutMetrics.frame;
       auto x = before.origin.x + transitionProgress_ * (after.origin.x - before.origin.x);
@@ -317,6 +339,7 @@ std::optional<SurfaceId> LayoutAnimationsProxy_Experimental::onTransitionProgres
     } else if (transitionState_ == TransitionState::ACTIVE && progress == 1) {
       transitionState_ = TransitionState::END;
     }
+
     const auto &node = lightNodes_[tag];
     react_native_assert(node && "LightNode is nullptr");
 
